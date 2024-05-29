@@ -3,63 +3,92 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MetaMask Interaction</title>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.5.1/dist/ethers.min.js"></script>
+    <title>MetaMask Integration</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.min.js"></script>
   </head>
   <body>
+    <h1>MetaMask Integration</h1>
     <script>
-      async function connectMetaMask() {
-        if (typeof window.ethereum !== "undefined") {
+      window.addEventListener("message", async (event) => {
+        const { type, bidAmount } = JSON.parse(event.data);
+
+        if (type === "CONNECT") {
           try {
-            await ethereum.request({ method: "eth_requestAccounts" });
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            const address = await signer.getAddress();
-            window.ReactNativeWebView.postMessage(JSON.stringify({ address }));
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== "undefined") {
+              // Request account access
+              const accounts = await ethereum.request({
+                method: "eth_requestAccounts",
+              });
+              const account = accounts[0];
+
+              // Send the account address back to the React Native WebView
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ address: account })
+              );
+            } else {
+              // MetaMask not installed
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ error: "MetaMask is not installed" })
+              );
+            }
           } catch (error) {
             window.ReactNativeWebView.postMessage(
               JSON.stringify({ error: error.message })
             );
           }
-        } else {
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ error: "MetaMask not detected" })
-          );
         }
-      }
 
-      async function placeBid(bidAmount) {
-        try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          const contractAddress = "0xYourContractAddress";
-          const contractAbi = [
-            // Your contract ABI here
-          ];
-          const contract = new ethers.Contract(
-            contractAddress,
-            contractAbi,
-            signer
-          );
-          const bidValue = ethers.utils.parseEther(bidAmount.toString());
-          const transaction = await contract.bid({ value: bidValue });
-          await transaction.wait();
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ success: "Bid placed successfully" })
-          );
-        } catch (error) {
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ error: error.message })
-          );
-        }
-      }
+        if (type === "BID" && bidAmount) {
+          try {
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== "undefined") {
+              // Create a provider and signer
+              const provider = new ethers.providers.Web3Provider(
+                window.ethereum
+              );
+              const signer = provider.getSigner();
 
-      window.addEventListener("message", async (event) => {
-        const { type, bidAmount } = JSON.parse(event.data);
-        if (type === "CONNECT") {
-          await connectMetaMask();
-        } else if (type === "BID" && bidAmount) {
-          await placeBid(bidAmount);
+              // Set up the contract (replace with your contract's ABI and address)
+              const contractAddress = "0xYourContractAddress";
+              const contractABI = [
+                // Replace this ABI with your contract's ABI
+                {
+                  inputs: [],
+                  name: "bid",
+                  outputs: [],
+                  stateMutability: "payable",
+                  type: "function",
+                },
+              ];
+              const contract = new ethers.Contract(
+                contractAddress,
+                contractABI,
+                signer
+              );
+
+              // Convert bidAmount to Wei
+              const bidAmountInWei = ethers.utils.parseEther(bidAmount);
+
+              // Send the bid transaction
+              const tx = await contract.bid({ value: bidAmountInWei });
+              await tx.wait();
+
+              // Send success message back to React Native WebView
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ success: "Bid placed successfully!" })
+              );
+            } else {
+              // MetaMask not installed
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ error: "MetaMask is not installed" })
+              );
+            }
+          } catch (error) {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ error: error.message })
+            );
+          }
         }
       });
     </script>
