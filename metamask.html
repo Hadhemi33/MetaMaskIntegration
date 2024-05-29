@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetaMask Interaction</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.5.1/dist/ethers.min.js"></script>
+  </head>
+  <body>
+    <script>
+      async function connectMetaMask() {
+        if (typeof window.ethereum !== "undefined") {
+          try {
+            await ethereum.request({ method: "eth_requestAccounts" });
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            const address = await signer.getAddress();
+            window.ReactNativeWebView.postMessage(JSON.stringify({ address }));
+          } catch (error) {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ error: error.message })
+            );
+          }
+        } else {
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({ error: "MetaMask not detected" })
+          );
+        }
+      }
+
+      async function placeBid(bidAmount) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contractAddress = "0xYourContractAddress";
+          const contractAbi = [
+            // Your contract ABI here
+          ];
+          const contract = new ethers.Contract(
+            contractAddress,
+            contractAbi,
+            signer
+          );
+          const bidValue = ethers.utils.parseEther(bidAmount.toString());
+          const transaction = await contract.bid({ value: bidValue });
+          await transaction.wait();
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({ success: "Bid placed successfully" })
+          );
+        } catch (error) {
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({ error: error.message })
+          );
+        }
+      }
+
+      window.addEventListener("message", async (event) => {
+        const { type, bidAmount } = JSON.parse(event.data);
+        if (type === "CONNECT") {
+          await connectMetaMask();
+        } else if (type === "BID" && bidAmount) {
+          await placeBid(bidAmount);
+        }
+      });
+    </script>
+  </body>
+</html>
